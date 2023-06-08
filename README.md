@@ -14,7 +14,7 @@ Currently I have covered vector addition and 2D convolution operation.
 ```bash
 nvcc program.cu -o program
 ```
-3. To compile a program using uDNN library 
+3. To compile a program using cuDNN library 
 ```bash
 nvcc program.cu -lcudnn -o program
 ```
