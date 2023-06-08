@@ -5,5 +5,5 @@ Currently I have covered vector addition and 2D convolution operation.
 
 ## Content
 
-1. Vector Addition
-2. Convolution
+1. Vector Addition - Baseline, Pinned Memory, Unified Memory
+2. Convolution - Baseline, Tiled, cuDNN 
