@@ -1,4 +1,3 @@
-# cuda-essentials
 # CUDA Essentials
 This repository is a good starting point to learn about CUDA basics.
 Details about CUDA specific syntaxes are added as comments.
