@@ -1,3 +1,5 @@
+// This program implements a 2D convolution with tiling using CUDA
+
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -8,6 +10,14 @@ using namespace std;
 
 struct timespec start, finish;
 
+//  2-D convolution kernel with tiling
+//  Arguments:
+//      d_tensor   = padded array
+//      d_inputdim = [C,H,W]
+//      d_filter   = convolution mask/filter
+//      d_filterdim= [K,C,FH,FW]
+//      d_R        = result array
+//      d_outputdim= [K,(H-FH+2*P+1),(W-FW+2*P+1)]
 __global__ void Conv2d(double* d_tensor, int* d_inputdim, double* d_filter, int* d_filterdim, double* d_R, int* d_outputdim)
 {
     int threadId = threadIdx.x;
@@ -62,6 +72,7 @@ __global__ void Conv2d(double* d_tensor, int* d_inputdim, double* d_filter, int*
     d_R[K*d_outputdim[1]*d_outputdim[2] + x*d_outputdim[2] + y + threadId] = temp;
 }
 
+// Prints the checksum. We compare the checksum with the output of cuDNN.
 double checksum(double *R, int N)
 {
     double sum = 0;
@@ -94,6 +105,7 @@ int main(int argc, char* argv[])
     int *d_filterdim;
     int *d_outputdim;
 
+    // Allocate the input tensor
     tensor = (double*) malloc(C*H*W*sizeof(double));
     for(int i = 0 ; i < C ; i++)
     {
@@ -106,6 +118,7 @@ int main(int argc, char* argv[])
         }
     }
 
+    // Allocate the filter tensor
     filter = (double*) malloc(K*C*FW*FH*sizeof(double));
     for(int i = 0 ; i < K ; i++)
     {
@@ -121,10 +134,12 @@ int main(int argc, char* argv[])
         }
     }
 
+    // Allocate space for the result
     R = (double*) malloc((H-FH+2*P+1)*(W-FW+2*P+1)*K*sizeof(double));
     for(int i = 0 ; i < (H-FH+2*P+1)*(W-FW+2*P+1)*K ; i++)
         R[i] = 0;
 
+    // Allocate space on the device
     cudaMalloc((void**)&d_tensor, C*H*W*sizeof(double));
     cudaMalloc((void**)&d_inputdim, 3*sizeof(double));
     cudaMalloc((void**)&d_filter, K*C*FH*FW*sizeof(double));
@@ -132,6 +147,7 @@ int main(int argc, char* argv[])
     cudaMalloc((void**)&d_R, (H-FH+2*P+1)*(W-FW+2*P+1)*K*sizeof(double));
     cudaMalloc((void**)&d_outputdim, 3*sizeof(double));
 
+    // Copy the data to the device
     cudaMemcpy(d_tensor, tensor, C*H*W*sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_inputdim, inputdim, 3*sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_filter, filter, K*C*FW*FH*sizeof(double), cudaMemcpyHostToDevice);
@@ -141,16 +157,23 @@ int main(int argc, char* argv[])
     
     clock_gettime(CLOCK_MONOTONIC,&start);
 
+    // Call the kernel
     Conv2d<<<NUM_BLOCKS, NUM_THREADS, SHMEM>>>(d_tensor, d_inputdim, d_filter, d_filterdim, d_R, d_outputdim);
+    
+    // Since Kernel calls are asynchronous we wait here. Its necessary for 
+    // this particular case because we no longer use cudaMemcpy and hence we 
+    // need to manually create a synchronization barrier.
     cudaDeviceSynchronize();
 
     clock_gettime(CLOCK_MONOTONIC,&finish);
 
+    // Copy back the result
     cudaMemcpy(R, d_R, (H-FH+2*P+1)*(W-FW+2*P+1)*K*sizeof(double), cudaMemcpyDeviceToHost); 
 
     double time_usec =(((double)finish.tv_sec *1000000 + (double)finish.tv_nsec/1000) - ((double)start.tv_sec *1000000 + (double)start.tv_nsec/1000));
     printf("%.03lf,%.03lf\n", checksum(R, (H-FH+2*P+1)*(W-FW+2*P+1)*K), time_usec/1000);
 
+    // Free allocated memory on the device
     cudaFree(d_tensor);
     cudaFree(d_inputdim);
     cudaFree(d_filter);
