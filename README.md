@@ -10,6 +10,18 @@ Currently I have covered vector addition and 2D convolution operation.
 
 ## Running Instructions
 1. Requires CUDA installed in the machine. We use CUDA v11.7
-2. To compile the programs use 'nvcc x.cu -o x'
-3. To include cuDNN library add '-lcudnn'
-4. To profile using nvidia profiler run it as 'nvprof ./x {args}' 
+2. To compile the program (program.cu) use 
+```bash
+nvcc program.cu -o program
+```
+3. To compile a program using uDNN library 
+```bash
+nvcc program.cu -lcudnn -o program
+```
+4. To profile program.cu using nvidia profiler
+```bash
+nvprof ./program [arg1] [arg2] [arg3]
+```
+Number of arguments are program specific. Go through the code to know more.
+## License
+[MIT](https://choosealicense.com/licenses/mit/)
