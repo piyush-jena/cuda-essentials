@@ -1,3 +1,5 @@
+// This program computes the sum of two vectors of length N
+
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -9,10 +11,12 @@ struct timespec start, hostDataAlloc, cudaDataAlloc, cudaCalc, cudaCopyToHost, f
 
 using namespace std;
 
+// CUDA kernel for vector addition
+// __global__ means the function is called from the CPU, and runs on the GPU
 __global__ void vectorAddition(int* A, int* B, int* R, int N, int NBlocks)
 {
     int threadId = (blockIdx.x * blockDim.x) + threadIdx.x;
-    int stride = blockDim.x*NBlocks;
+    int stride = blockDim.x * NBlocks;
 
     while (threadId < N)
     {
@@ -21,6 +25,7 @@ __global__ void vectorAddition(int* A, int* B, int* R, int N, int NBlocks)
     }
 }
 
+// Check vectorAddition result
 void verify_result(int* A, int* B, int* R, int N) 
 {
     for (int i = 0; i < N; i++) 
@@ -62,17 +67,27 @@ int main(int argc, char* argv[])
 
     clock_gettime(CLOCK_MONOTONIC,&hostDataAlloc);
 
+    // Allocate memory on the device
     cudaMalloc((void**)&d_A, memorybytes);
     cudaMalloc((void**)&d_B, memorybytes);
     cudaMalloc((void**)&d_R, memorybytes);
 
+    // Copy data from the host to the device (CPU -> GPU)
     cudaMemcpy(d_A, A, memorybytes, cudaMemcpyHostToDevice);
     cudaMemcpy(d_B, B, memorybytes, cudaMemcpyHostToDevice);
     cudaMemcpy(d_R, R, memorybytes, cudaMemcpyHostToDevice);
 
     clock_gettime(CLOCK_MONOTONIC,&cudaDataAlloc);
 
+    // Launch the kernel on the GPU
+    // Kernel calls are asynchronous (the CPU program continues execution after
+    // call, but no necessarily before the kernel finishes)
     vectorAddition<<<NUM_BLOCKS, NUM_THREADS>>>(d_A, d_B, d_R, N, NUM_BLOCKS);
+
+    // Since Kernel calls are asynchronous we wait here. Its not necessary for 
+    // this particular case because cudaMemcpy is a synchronous operation and
+    // itself acts as a synchronization barrier. We are using it here for 
+    // profiling.
     cudaDeviceSynchronize();
 
     clock_gettime(CLOCK_MONOTONIC,&cudaCalc);
@@ -81,9 +96,10 @@ int main(int argc, char* argv[])
 
     clock_gettime(CLOCK_MONOTONIC,&cudaCopyToHost);
 
-    
+    // Check result for errors
     verify_result(A, B, R, N);
 
+    // Free memory on device and host
     cudaFree(d_A);
     cudaFree(d_B);
     cudaFree(d_R);
@@ -94,7 +110,8 @@ int main(int argc, char* argv[])
 
     clock_gettime(CLOCK_MONOTONIC,&finish);
 
-    printf("q2 N=%d threads=%d blocks=%d \n",N,NUM_THREADS,NUM_BLOCKS);
+    // Profiling results
+    printf("N=%d threads=%d blocks=%d \n",N,NUM_THREADS,NUM_BLOCKS);
 
     time_usec =(((double)finish.tv_sec *1000000 + (double)finish.tv_nsec/1000) - ((double)start.tv_sec *1000000 + (double)start.tv_nsec/1000));
 	printf("Total execution time: %.03lf\n", time_usec/1000);
