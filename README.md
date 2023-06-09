@@ -28,7 +28,7 @@ Number of arguments are program specific. Go through the code to know more.
 Tested the code on following cases:
 1. 1 block, 1 thread : slight slow down compared to CPU due to lower clock speeds.
 2. 1 block, 256 threads : Speedup > 10
-3. n* blocks, 256 threads : Speedup > 100 (n is selected such that n * 256 = size of vector)
+3. n blocks, 256 threads : Speedup > 100 (n is selected such that n * 256 = size of vector)
 
 ## 2D Convolution Results
 Hardware: Intel Xeon, NVIDIA Tesla P4
